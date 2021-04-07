@@ -21,7 +21,7 @@ import slamdata.Predef._
 import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
-import quasar.blobstore.services.{GetService, ListService, PropsService, StatusService}
+import quasar.blobstore.services.{GetService, GetServiceResource, ListService, PropsService, StatusService}
 import quasar.connector.datasource.{BatchLoader, LightweightDatasource, LightweightDatasourceModule, Loader}
 import quasar.qscript.InterpretedRead
 
@@ -29,8 +29,6 @@ import cats.Monad
 import cats.data.NonEmptyList
 import cats.effect.Resource
 import cats.syntax.applicative._
-import cats.syntax.functor._
-import cats.syntax.flatMap._
 
 import fs2.Stream
 
@@ -40,18 +38,18 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     statusService: StatusService[F],
     listService: ListService[F],
     propsService: PropsService[F, P],
-    getService: GetService[F])
+    getService: GetServiceResource[F])
     extends LightweightDatasource[Resource[F, ?], Stream[F, ?], QueryResult[F]] {
 
   private def raisePathNotFound(path: ResourcePath) =
     MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
 
   val loaders = NonEmptyList.of(Loader.Batch(BatchLoader.Full { (iRead: InterpretedRead[ResourcePath]) =>
-    Resource.liftF(for {
-      optBytes <- (converters.resourcePathToBlobPathK[F] andThen getService).apply(iRead.path)
-      bytes <- optBytes.map(_.pure[F]).getOrElse(raisePathNotFound(iRead.path))
+    for {
+      optBytes <- (converters.resourcePathToBlobPathK[Resource[F, *]] andThen getService).apply(iRead.path)
+      bytes <- optBytes.map(_.pure[Resource[F, *]]).getOrElse(Resource.liftF(raisePathNotFound(iRead.path)))
       qr = QueryResult.typed[F](format, ResultData.Continuous(bytes), iRead.stages)
-    } yield qr)
+    } yield qr
   }))
 
   override def pathIsResource(path: ResourcePath): Resource[F, Boolean] =
@@ -81,7 +79,17 @@ object BlobstoreDatasource {
       statusService: StatusService[F],
       listService: ListService[F],
       propsService: PropsService[F, P],
-      getService: GetService[F])
+      getService: GetServiceResource[F])
       : BlobstoreDatasource[F, P] =
     new BlobstoreDatasource(kind, format, statusService, listService, propsService, getService)
+
+  def mk[F[_]: Monad: MonadResourceErr, P](
+      kind: DatasourceType,
+      format: DataFormat,
+      statusService: StatusService[F],
+      listService: ListService[F],
+      propsService: PropsService[F, P],
+      getService: GetService[F])
+      : BlobstoreDatasource[F, P] =
+    new BlobstoreDatasource(kind, format, statusService, listService, propsService, getService.mapF(Resource.liftF(_)))
 }
