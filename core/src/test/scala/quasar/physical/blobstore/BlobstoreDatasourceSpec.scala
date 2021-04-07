@@ -48,25 +48,25 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
     "list nested children" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3"),
-        List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
+        Set(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
     "list nested children (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("dir1") / ResourceName("dir2") / ResourceName("dir3") / ResourceName(""),
-        List(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
+        Set(ResourceName("flattenable.data") -> ResourcePathType.leafResource))
     }
 
     "list nested children 2" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("prefix3") / ResourceName("subprefix5"),
-        List(ResourceName("cars2.data") -> ResourcePathType.leafResource))
+        Set(ResourceName("cars2.data") -> ResourcePathType.leafResource))
     }
 
     "list children at the root of the bucket" >> {
       assertPrefixedChildPaths(
         ResourcePath.root(),
-        List(
+        Set(
           ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
           ResourceName("dir1") -> ResourcePathType.prefix,
           ResourceName("prefix3") -> ResourcePathType.prefix,
@@ -76,7 +76,7 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
     "list children at the root of the bucket (alternative)" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName(""),
-        List(
+        Set(
           ResourceName("extraSmallZips.data") -> ResourcePathType.leafResource,
           ResourceName("dir1") -> ResourcePathType.prefix,
           ResourceName("prefix3") -> ResourcePathType.prefix,
@@ -86,12 +86,12 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
     "return empty stream for non-prefix path" >> {
       assertPrefixedChildPaths(
         ResourcePath.root() / ResourceName("extraSmallZips.data"),
-        List())
+        Set())
     }
 
     // doesn't adhere to datasource spec see ch11270
     "return empty stream for non-existing path" >> {
-      assertPrefixedChildPaths(nonExistentPath, List())
+      assertPrefixedChildPaths(nonExistentPath, Set())
     }
   }
 
@@ -168,9 +168,9 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
       }
     }
 
-  def assertPrefixedChildPaths(path: ResourcePath, expected: List[(ResourceName, ResourcePathType)]) =
+  def assertPrefixedChildPaths(path: ResourcePath, expected: Set[(ResourceName, ResourcePathType)]) =
     datasource.use(_.prefixedChildPaths(path) use {
-      case Some(children) => children.compile.toList.map(_ must_== expected)
+      case Some(children) => children.compile.to(Set).map(_ must_== expected)
       case None => IO.raiseError[MatchResult[Any]](new Exception(s"Failed to list resources under $path"))
     })
 
