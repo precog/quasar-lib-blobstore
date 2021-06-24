@@ -47,7 +47,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
   val loaders = NonEmptyList.of(Loader.Batch(BatchLoader.Full { (iRead: InterpretedRead[ResourcePath]) =>
     for {
       optBytes <- (converters.resourcePathToBlobPathK[Resource[F, *]] andThen getService).apply(iRead.path)
-      bytes <- optBytes.map(_.pure[Resource[F, *]]).getOrElse(Resource.liftF(raisePathNotFound(iRead.path)))
+      bytes <- optBytes.map(_.pure[Resource[F, *]]).getOrElse(Resource.eval(raisePathNotFound(iRead.path)))
       qr = QueryResult.typed[F](format, ResultData.Continuous(bytes), iRead.stages)
     } yield qr
   }))
@@ -91,5 +91,5 @@ object BlobstoreDatasource {
       propsService: PropsService[F, P],
       getService: GetService[F])
       : BlobstoreDatasource[F, P] =
-    new BlobstoreDatasource(kind, format, statusService, listService, propsService, getService.mapF(Resource.liftF(_)))
+    new BlobstoreDatasource(kind, format, statusService, listService, propsService, getService.mapF(Resource.eval(_)))
 }
