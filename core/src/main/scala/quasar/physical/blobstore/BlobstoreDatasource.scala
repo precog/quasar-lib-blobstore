@@ -22,7 +22,7 @@ import quasar.api.datasource.DatasourceType
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector._
 import quasar.blobstore.services.{GetService, GetServiceResource, ListService, PropsService, StatusService}
-import quasar.connector.datasource.{BatchLoader, LightweightDatasource, LightweightDatasourceModule, Loader}
+import quasar.connector.datasource.{BatchLoader, DatasourceModule, Loader}
 import quasar.qscript.InterpretedRead
 
 import cats.Monad
@@ -39,7 +39,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
     listService: ListService[F],
     propsService: PropsService[F, P],
     getService: GetServiceResource[F])
-    extends LightweightDatasource[Resource[F, ?], Stream[F, ?], QueryResult[F]] {
+    extends DatasourceModule.DS[F] {
 
   private def raisePathNotFound(path: ResourcePath) =
     MonadResourceErr[F].raiseError(ResourceError.pathNotFound(path))
@@ -67,7 +67,7 @@ class BlobstoreDatasource[F[_]: Monad: MonadResourceErr, P](
       .map(_.map(_.map(converters.toResourceNameType)))
       .apply(prefixPath)
 
-  def asDsType: LightweightDatasourceModule.DS[F] = this
+  def asDsType: DatasourceModule.DS[F] = this
 
   def status: StatusService[F] = statusService
 }
