@@ -20,7 +20,7 @@ import slamdata.Predef._
 import quasar.ScalarStages
 import quasar.api.resource.{ResourceName, ResourcePath, ResourcePathType}
 import quasar.connector.{QueryResult, ResourceError}
-import quasar.connector.datasource.LightweightDatasourceModule
+import quasar.connector.datasource.DatasourceModule
 import quasar.qscript.InterpretedRead
 
 import java.nio.charset.StandardCharsets
@@ -33,7 +33,7 @@ import org.specs2.mutable.Specification
 
 abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
 
-  def datasource: Resource[IO, LightweightDatasourceModule.DS[IO]]
+  def datasource: Resource[IO, DatasourceModule.DS[IO]]
 
   val nonExistentPath =
     ResourcePath.root() / ResourceName("does") / ResourceName("not") / ResourceName("exist")
@@ -151,14 +151,14 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
   def iRead[A](path: A): InterpretedRead[A] = InterpretedRead(path, ScalarStages.Id)
 
   def assertPathIsResource(
-      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
+      datasource: Resource[IO, DatasourceModule.DS[IO]],
       path: ResourcePath,
       expected: Boolean)
       : IO[MatchResult[Any]] =
     datasource.use(_.pathIsResource(path).use(b => IO.pure(b must_=== expected)))
 
   def assertPathNotFound(
-      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
+      datasource: Resource[IO, DatasourceModule.DS[IO]],
       path: ResourcePath)
       : IO[MatchResult[Any]] =
     datasource use { ds =>
@@ -178,7 +178,7 @@ abstract class BlobstoreDatasourceSpec extends Specification with CatsIO {
     datasource.use(_.prefixedChildPaths(path).use(r => IO.pure(r must beNone)))
 
   def assertResultBytes(
-      datasource: Resource[IO, LightweightDatasourceModule.DS[IO]],
+      datasource: Resource[IO, DatasourceModule.DS[IO]],
       path: ResourcePath,
       expected: Array[Byte]): IO[MatchResult[Any]] =
     datasource use { ds =>
